@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CSU Cost Analysis Sheet</title>
+
+<!-- Bootstrap & Quill CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+
+<style>
+  body {
+    background-color: #f5f6fa;
+    font-family: 'Segoe UI', system-ui, -apple-system, "Helvetica Neue", Arial;
+    padding: 28px;
+  }
+  .container-card {
+    max-width: 980px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 28px;
+    border-radius: 14px;
+    box-shadow: 0 8px 30px rgba(20,20,30,0.06);
+  }
+  .story-row {
+    display:flex;
+    gap:10px;
+    margin-bottom:10px;
+    align-items:center;
+  }
+  .story-row input { flex:1; }
+  .btn-group-line .btn { flex:1; }
+  .quill-editor { height:160px; }
+  #resultsSection .p-3 { min-height: 60px; }
+  .muted { color:#6c757d; font-size:0.95rem; }
+</style>
+</head>
+<body>
+<div class="container-card">
+  <div class="text-center mb-3">
+    <img src="https://raw.githubusercontent.com/MarkE63Ward/CSU-Cost-Analysis/main/image.png" alt="Logo" style="height:60px;">
+  </div>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+  <h1>CSU Cost Analysis Sheet</h1>
+  <button id="helpBtn" class="btn btn-primary" style="padding:5px 10px; font-size:14px;">Help</button>
+</div>
+
+  <!-- Inspector Name & Date -->
+  <div class="row g-3 mb-3">
+    <div class="col-md-7">
+      <label class="form-label">Inspector Name</label>
+      <input type="text" id="inspectorName" class="form-control" placeholder="Inspector name">
+    </div>
+    <div class="col-md-5">
+      <label class="form-label">Date of Inspection</label>
+      <input type="date" id="inspectionDate" class="form-control">
+    </div>
+  </div>
+
+  <!-- Property Address -->
+  <div class="mb-3">
+    <label class="form-label">Property Address</label>
+    <input type="text" id="propertyAddress" class="form-control" placeholder="Enter Property Address">
+  </div>
+
+  <!-- Occupancy & Construction -->
+  <div class="row g-3 mb-3">
+    <div class="col-md-7">
+      <label class="form-label">Type of Occupancy</label>
+      <select id="occupancyType" class="form-select">
+        <option value="">Select Occupancy</option>
+        <option value="A-2">A-2 (Assembly) Restaurants, Bars, Banquet Halls</option>
+        <option value="A-3-church">A-3 (Assembly) Churches</option>
+        <option value="A-3-general">A-3 (Assembly) General, Community Halls, Libraries, Museums</option>
+        <option value="F-1">F-1 (Factory & Industrial)</option>
+        <option value="R-2">R-2 (Residential) Multi-Family</option>
+        <option value="R-3">R-3 (Residential) One & Two Family</option>
+        <option value="R-4">R-4 (Residential) Care / Assisted Living</option>
+      </select>
+    </div>
+    <div class="col-md-5">
+      <label class="form-label">Type of Construction</label>
+      <select id="constructionType" class="form-select">
+        <option value="">Select Construction</option>
+        <option>IA</option><option>IB</option><option>IIA</option><option>IIB</option>
+        <option>IIIA</option><option>IIIB</option><option>IV</option><option>VA</option><option>VB</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Stories -->
+  <div id="storiesContainer" class="mb-3">
+    <label class="form-label">Stories & Square Footage</label>
+    <div class="story-row">
+      <input type="text" placeholder="Enter Story. e.g. Basement, 1st, 2nd etc.." class="form-control story-number">
+      <input type="number" placeholder="Square Footage" class="form-control story-sqft" min="0">
+      <button type="button" class="btn btn-outline-danger remove-story">Remove</button>
+    </div>
+  </div>
+  <div class="mb-3">
+    <button type="button" id="addStory" class="btn btn-outline-secondary">Add Story</button>
+    <span class="muted ms-3">Add as many stories as needed. Use the "Remove" button to delete a row.</span>
+  </div>
+
+  <!-- Comments -->
+  <div class="mb-3">
+    <label class="form-label">Comments</label>
+    <div id="commentsEditor" class="quill-editor"></div>
+  </div>
+
+  <!-- Results -->
+  <div id="resultsSection" class="mb-3" style="display:none;">
+    <div class="p-3 border rounded bg-light">
+      <p class="mb-1"><strong>Total SqFt:</strong> <span id="resultTotalSqFt">0</span></p>
+      <p class="mb-1"><strong>Cost per SqFt:</strong> <span id="resultCostPerSqFt">$0.00</span></p>
+      <p class="mb-0"><strong>Total Cost:</strong> <span id="resultTotalCost">$0.00</span></p>
+    </div>
+  </div>
+
+  <!-- Calculate & Clear -->
+  <div class="row mb-3 g-3 btn-group-line">
+    <div class="col-md-6">
+      <button class="btn btn-primary w-100" id="calculateBtn">Calculate</button>
+    </div>
+    <div class="col-md-6">
+      <button class="btn btn-danger w-100" id="clearBtn">Clear</button>
+    </div>
+  </div>
+
+  <!-- Preview / Word / PDF -->
+  <div class="row mb-3 g-3">
+    <div class="col-md-4">
+      <button class="btn btn-info w-100" id="previewBtn">Preview</button>
+    </div>
+    <div class="col-md-4">
+      <button class="btn btn-success w-100" id="generateWordBtn">Generate Word</button>
+    </div>
+    <div class="col-md-4">
+      <button class="btn btn-warning w-100" id="generatePdfBtn">Generate PDF</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">CSU Cost Analysis Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="modalContent"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--- Help Modal --->
+<!--- Help Modal --->
+<div id="helpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
+    background-color:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+  <div style="background:#fff; padding:20px; max-width:900px; width:90%; border-radius:8px; position:relative;">
+    <span id="closeHelp" style="position:absolute; top:10px; right:15px; font-size:18px; cursor:pointer;">&times;</span>
+    <h2>Help</h2>
+    <p>Welcome to the CSU Cost Analysis Sheet. Here’s how to use the form:</p>
+    <ul>
+      <li>Fill out the inspector name, date, occupancy, and property address.</li>
+      <li>Enter the story names and square footages in the Stories section.</li>
+      <li>Select the type of construction.
+        <ul>
+          <li><strong>Type IA:</strong> Non-combustible & fire resistant, used for high rise buildings and high occupancies.</li>
+          <li><strong>Type IB:</strong> Non-combustible with moderate fire protection, used for mid-rise office buildings.</li>
+          <li><strong>Type IIA:</strong> Non-combustible & provides up to one hour of fire protection, used for education institutions, day care's and religious buildings.</li>
+          <li><strong>Type IIB:</strong> Non-combustible & has no fire resistance, often used for commercial buildings.</li>
+          <li><strong>Type IIIA:</strong> Non-combustible exterior such as brick or block walls with the exterior fire resistance for two hours and the rest of the building for one hour.</li>
+          <li><strong>Type IIIB:</strong> This is known as "Ordinary Construction" with non-combustible exterior walls but no fire resistance requirements on the interior.</li>
+          <li><strong>Type IV:</strong> Heavy timber construction method of non-combustible exterior & solid/laminated wood interior.</li>
+          <li><strong>Type VA:</strong> Fire restance rating of one hour with wood framing commonly used ini multi-family homes.</li>
+          <li><strong>Type VB:</strong> No fire resistance requirements.</li>
+        </ul>
+      </li>
+      <li>Use the Generate Word or Generate PDF buttons to export your analysis.</li>
+    </ul>
+
+    <!-- Cost Table Section -->
+    <h3 style="margin-top:15px;">Cost Table (Occupancy × Construction Type)</h3>
+    <div id="costTableContainer" style="overflow-x:auto; max-height:300px; border:1px solid #ccc; border-radius:6px; padding:5px; background:#f9f9f9;"></div>
+
+    <!-- ✅ Close Button -->
+    <div style="text-align:right; margin-top:20px;">
+      <button id="closeHelpBtn" style="
+        background-color:#2563eb; 
+        color:white; 
+        border:none; 
+        padding:8px 16px; 
+        border-radius:6px; 
+        font-size:16px; 
+        cursor:pointer;
+      ">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+<script>
+// --- Utility functions ---
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d)) return "";
+  return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
+}
+function formatMoney(num) { return isFinite(num)? Number(num).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):"0.00"; }
+function formatNumber(num) { return parseFloat(num)||0; }
+function escapeHtml(unsafe){ if(!unsafe&&unsafe!==0)return''; return String(unsafe).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
+
+var quill = new Quill('#commentsEditor', { theme: 'snow' });
+
+// --- Stories Add/Remove ---
+document.getElementById('addStory').addEventListener('click',()=>{
+  const container=document.getElementById('storiesContainer');
+  const div=document.createElement('div'); div.classList.add('story-row');
+  div.innerHTML=`<input type="text" placeholder="Story" class="form-control story-number"><input type="number" placeholder="Square Footage" class="form-control story-sqft" min="0"><button type="button" class="btn btn-outline-danger remove-story">Remove</button>`;
+  container.appendChild(div);
+});
+document.getElementById('storiesContainer').addEventListener('click',e=>{
+  if(e.target.classList.contains('remove-story')) e.target.parentElement.remove();
+});
+
+// --- Cost Table ---
+const costTable={ "A-2":{"IA":263.07,"IB":255.33,"IIA":246.28,"IIB":237.82,"IIIA":221.69,"IIIB":216.61,"IV":229.62,"VA":201.42,"VB":194.71}, "A-3-church":{"IA":311.21,"IB":299.31,"IIA":289.82,"IIB":277.5,"IIIA":258.18,"IIIB":250.05,"IV":267.24,"VA":239.06,"VB":229.06}, "A-3-general":{"IA":261.35,"IB":249.47,"IIA":238.96,"IIB":227.64,"IIIA":207.19,"IIIB":200.06,"IV":217.38,"VA":188.07,"VB":179.07}, "F-1":{"IA":162.52,"IB":154.68,"IIA":144.93,"IIB":139.48,"IIIA":124.19,"IIIB":118.17,"IV":132.99,"VA":102.98,"VB":95.9}, "R-2":{"IA":223.61,"IB":214.25,"IIA":205.52,"IIB":196.79,"IIIA":177.77,"IIIB":171.76,"IV":196.82,"VA":155.95,"VB":149.8}, "R-3":{"IA":211.77,"IB":205.84,"IIA":200.99,"IIB":197.13,"IIIA":190.36,"IIIB":183.32,"IV":193.75,"VA":177.67,"VB":167.37}, "R-4":{"IA":264.93,"IB":255.57,"IIA":246.84,"IIB":238.11,"IIIA":217.64,"IIIB":211.63,"IV":238.15,"VA":195.82,"VB":189.67} };
+
+function calculateCost(){
+  const occupancy=document.getElementById('occupancyType').value;
+  const construction=document.getElementById('constructionType').value;
+  const storySqfts=[...document.querySelectorAll('.story-sqft')].map(i=>parseFloat(i.value)||0);
+  const totalSqFt=storySqfts.reduce((a,b)=>a+b,0);
+  const costPerSqFt=(costTable[occupancy]&&costTable[occupancy][construction])?costTable[occupancy][construction]:0;
+  const totalCost=totalSqFt*costPerSqFt;
+  return {totalSqFt,costPerSqFt,totalCost};
+}
+// --- Populate Cost Table inside Help Modal ---
+function renderCostTable() {
+  const container = document.getElementById("costTableContainer");
+  if (!container) return;
+
+  // Build table headers
+  const constructionTypes = ["IA", "IB", "IIA", "IIB", "IIIA", "IIIB", "IV", "VA", "VB"];
+  let html = `<table style="width:100%; border-collapse:collapse; font-size:12px;">
+    <thead>
+      <tr style="background:#e5e7eb;">
+        <th style="border:1px solid #ccc; padding:4px;">Occupancy</th>`;
+  constructionTypes.forEach(type => {
+    html += `<th style="border:1px solid #ccc; padding:4px;">${type}</th>`;
+  });
+  html += `</tr></thead><tbody>`;
+
+  // Fill rows
+  for (const [occ, values] of Object.entries(costTable)) {
+    html += `<tr><td style="border:1px solid #ccc; padding:4px; font-weight:bold;">${occ}</td>`;
+    constructionTypes.forEach(type => {
+      const val = values[type] ?? "-";
+      html += `<td style="border:1px solid #ccc; padding:4px; text-align:center;">${val}</td>`;
+    });
+    html += `</tr>`;
+  }
+
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+}
+
+
+// --- Calculate ---
+document.getElementById('calculateBtn').addEventListener('click',()=>{
+  const {totalSqFt,costPerSqFt,totalCost}=calculateCost();
+  document.getElementById('resultTotalSqFt').textContent=formatNumber(totalSqFt);
+  document.getElementById('resultCostPerSqFt').textContent=`$${formatMoney(costPerSqFt)}`;
+  document.getElementById('resultTotalCost').textContent=`$${formatMoney(totalCost)}`;
+  document.getElementById('resultsSection').style.display='block';
+});
+
+// --- Preview Modal ---
+document.getElementById('previewBtn').addEventListener('click',()=>{
+  const {totalSqFt,costPerSqFt,totalCost}=calculateCost();
+  const commentsHTML=quill.root.innerHTML||'';
+  let html=`<p><strong>Inspector:</strong> ${escapeHtml(document.getElementById('inspectorName').value)}</p>
+            <p><strong>Date:</strong> ${formatDate(document.getElementById('inspectionDate').value)}</p>
+            <p><strong>Property:</strong> ${escapeHtml(document.getElementById('propertyAddress').value)}</p>
+            <p><strong>Occupancy:</strong> ${escapeHtml(document.getElementById('occupancyType').value)}</p>
+            <p><strong>Construction:</strong> ${escapeHtml(document.getElementById('constructionType').value)}</p>
+            <p><strong>Stories & SqFt:</strong></p><ul>`;
+  document.querySelectorAll('.story-row').forEach(row=>{
+    const num=row.querySelector('.story-number').value||'';
+    const sqft=row.querySelector('.story-sqft').value||0;
+    html+=`<li>Story ${escapeHtml(num)}: ${formatNumber(sqft)} SqFt</li>`;
+  });
+  html+=`</ul>
+         <p><strong>Total SqFt:</strong> ${formatNumber(totalSqFt)}</p>
+         <p><strong>Cost per SqFt:</strong> $${formatMoney(costPerSqFt)}</p>
+         <p><strong>Total Cost:</strong> $${formatMoney(totalCost)}</p>
+         <p><strong>Comments:</strong></p>
+         <div style="border:1px solid #e2e8f0; padding:10px; border-radius:6px; background:#fff;">${commentsHTML}</div>`;
+  document.getElementById('modalContent').innerHTML=html;
+  new bootstrap.Modal(document.getElementById('previewModal')).show();
+});
+
+
+// --- Generate Word ---
+document.getElementById('generateWordBtn').addEventListener('click', () => {
+  const { totalSqFt, costPerSqFt, totalCost } = calculateCost();
+  const comments = quill.root.innerHTML || '';
+
+  let docCss = `
+    <style>
+      @page { margin: 0.5in; }
+      body { font-family: Arial, Helvetica, sans-serif; margin: 0px; color: #111827; font-size:14pt; }
+      h1 { text-align: center; font-size:18pt; margin-bottom:2px; }
+      h2 { font-size:18pt; margin-top:5px; }
+      .info-box, .calc-box, .comment-box { border: 3px solid #b0b0b0; border-radius: 8px; background-color: #fff; padding:15px; margin-bottom:10px;}
+      .info-row, .calc-row { display:flex; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; }
+      .info-row div, .calc-row div { font-size:16pt; }
+      .calc-total { text-align:center; font-weight:bold; font-size:15pt; margin-top:10px;}
+      table { width:100%; margin:0; border-collapse: collapse; font-size:14pt; }
+      th, td {padding:5px;}
+      th { background-color:#f0f0f0; }
+      td.number { text-align:right; }
+
+      .stories-table { width:100%; border-collapse: collapse; margin:0; }
+      .stories-table th, .stories-table td { border:1px solid #333; padding:8px; text-align:left; }
+      .stories-table th.sqft-col, .stories-table td.sqft-col { text-align:center; }
+    </style>
+  `;
+
+  let storiesHtml = `
+<div style="width:100%; margin-bottom:5px;">
+  <table class="stories-table">
+    <thead>
+      <tr>
+        <th style="text-align:left;">Story</th>
+        <th class="sqft-col">Square Footage</th>
+      </tr>
+    </thead>
+    <tbody>`;
+  document.querySelectorAll('.story-row').forEach(r => {
+    const num = r.querySelector('.story-number').value || '';
+    const sqft = r.querySelector('.story-sqft').value || 0;
+    storiesHtml += `<tr><td>${escapeHtml(num)}</td><td class="sqft-col">${formatNumber(sqft)}</td></tr>`;
+  });
+  storiesHtml += `
+    </tbody>
+    <tfoot>
+      <tr>
+        <td><strong>Total</strong></td>
+        <td class="sqft-col">${[...document.querySelectorAll('.story-sqft')].reduce((a,b)=>a+parseFloat(b.value||0),0)}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>`;
+
+  let html = `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8"/>
+        <title>CSU Cost Analysis</title>
+        ${docCss}
+      </head>
+      <body>
+        <div style="text-align:center; margin-bottom:10px;">
+          <img 
+  src="https://raw.githubusercontent.com/MarkE63Ward/CSU-Cost-Analysis/main/image.png" 
+  style="width:600px; height:400px;" alt="Logo">
+        </div>
+        <h1>CSU Cost Analysis Sheet</h1>
+
+        <div class="info-box">
+  <table style="width:100%; border:none; margin:0;">
+    <tr>
+      <td style="text-align:left;"><strong>Inspector:</strong> ${escapeHtml(document.getElementById('inspectorName').value)}</td>
+      <td style="text-align:right;"><strong>Date:</strong> ${formatDate(document.getElementById('inspectionDate').value)}</td>
+    </tr>
+    <tr>
+      <td style="text-align:left;"><strong>Occupancy:</strong> ${escapeHtml(document.getElementById('occupancyType').value)}</td>
+      <td style="text-align:right;"><strong>Construction Type:</strong> ${escapeHtml(document.getElementById('constructionType').value)}</td>
+    </tr>
+    <tr>
+      <td colspan="2"><strong>Property Address:</strong> ${escapeHtml(document.getElementById('propertyAddress').value)}</td>
+    </tr>
+  </table>
+</div>
+
+        <h2>Stories & Square Footage</h2>
+        ${storiesHtml}
+<h2>Calculations</h2>
+        <div class="calc-box">
+  <table>
+    <tr>
+      <td><strong>Cost per SqFt:</strong> $${formatMoney(costPerSqFt)}</td>
+      <td><strong>Total SqFt:</strong> ${formatMoney(totalSqFt).replace('.00','')}</td>
+    </tr>
+    <tr>
+      <td colspan="2" class="calc-total">Total Cost: $${formatMoney(totalCost)}</td>
+    </tr>
+  </table>
+</div>
+        <h2>Comments</h2>
+        <div class="comment-box">${comments}</div>
+
+        <p style="margin-top:5px;font-size:11pt;color:#6b7280;">Document generated from City of Philadelphia Contractural Services Cost Analysis Program</p>
+      </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+  saveAs(blob, `CSU_Cost_Analysis_${new Date().toISOString().slice(0,10)}.doc`);
+});
+
+// --- Generate PDF ---
+document.getElementById('generatePdfBtn').addEventListener('click', () => {
+  const { totalSqFt, costPerSqFt, totalCost } = calculateCost();
+  const comments = quill.root.innerHTML || '';
+
+  // Use same stories table formatting
+  let storiesHtml = `<table style="width:100%; border-collapse:collapse; border:1px solid #333; margin-bottom:5px;">
+    <thead>
+      <tr>
+        <th style="border:1px solid #333; padding:5px; text-align:left;">Story</th>
+        <th style="border:1px solid #333; padding:5px; text-align:center;">Square Footage</th>
+      </tr>
+    </thead>
+    <tbody>`;
+  document.querySelectorAll('.story-row').forEach(r => {
+    const num = r.querySelector('.story-number').value || '';
+    const sqft = r.querySelector('.story-sqft').value || 0;
+    storiesHtml += `<tr><td style="border:1px solid #333; padding:8px;">${escapeHtml(num)}</td><td style="border:1px solid #333; padding:5px; text-align:center;">${formatNumber(sqft)}</td></tr>`;
+  });
+  storiesHtml += `<tfoot>
+    <tr>
+      <td style="border:1px solid #333; padding:5px;"><strong>Total</strong></td>
+      <td style="border:1px solid #333; padding:5px; text-align:center;">${[...document.querySelectorAll('.story-sqft')].reduce((a,b)=>a+parseFloat(b.value||0),0)}</td>
+    </tr>
+  </tfoot>
+  </table>`;
+
+ const docHtml = document.createElement('div');
+docHtml.style.padding = '10px';
+docHtml.style.background = '#fff';
+docHtml.style.width = '800px';
+docHtml.innerHTML = `
+  <div style="text-align:center; margin-bottom:10px;">
+    <img src="https://raw.githubusercontent.com/MarkE63Ward/CSU-Cost-Analysis/main/image.png" alt="Logo" style="height:50px;">
+  </div>
+  <h1 style="text-align:center;">CSU Cost Analysis Sheet</h1>
+  <div style="border:3px solid #b0b0b0; border-radius:8px; padding:5px; margin-bottom:5px;">
+    <table style="width:100%; border:none; margin:0;">
+      <tr>
+        <td style="text-align:left;"><strong>Inspector:</strong> ${escapeHtml(document.getElementById('inspectorName').value)}</td>
+        <td style="text-align:right;"><strong>Date:</strong> ${formatDate(document.getElementById('inspectionDate').value)}</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;"><strong>Occupancy:</strong> ${escapeHtml(document.getElementById('occupancyType').value)}</td>
+        <td style="text-align:right;"><strong>Construction Type:</strong> ${escapeHtml(document.getElementById('constructionType').value)}</td>
+      </tr>
+      <tr>
+        <td colspan="2"><strong>Property Address:</strong> ${escapeHtml(document.getElementById('propertyAddress').value)}</td>
+      </tr>
+    </table>
+  </div>
+
+    <h2>Stories & Square Footage</h2>
+    ${storiesHtml}
+    <h2>Calculations</h2>
+    <div style="border:3px solid #b0b0b0; border-radius:8px; padding:5px; margin-bottom:10px;">
+  <table style="width:100%; border:none;">
+    <tr>
+      <td style="text-align:left;"><strong>Cost per SqFt:</strong> $${formatMoney(costPerSqFt)}</td>
+      <td style="text-align:right;"><strong>Total SqFt:</strong> ${formatNumber(totalSqFt)}</td>
+    </tr>
+    <tr>
+      <td colspan="2" style="text-align:center; font-weight:bold;">Total Cost: $${formatMoney(totalCost)}</td>
+    </tr>
+  </table>
+</div>
+    <h2>Comments</h2>
+    <div style="border:3px solid #b0b0b0; border-radius:8px; padding:5px; margin-bottom:5px;">${comments}</div>
+    <p style="margin-top:20px;font-size:11.5px;color:#6b7280;">Document generated from CSU Cost Analysis Sheet</p>
+  `;
+  docHtml.style.position = 'absolute';
+  docHtml.style.left = '-9999px';
+  document.body.appendChild(docHtml);
+
+  html2canvas(docHtml).then(canvas => {
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'pt', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`CSU_Cost_Analysis_${new Date().toISOString().slice(0,10)}.pdf`);
+    document.body.removeChild(docHtml);
+  }).catch(err=>{
+    document.body.removeChild(docHtml);
+    alert('Error generating PDF: '+err);
+  });
+});
+
+// --- Clear ---
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.querySelectorAll('input').forEach(i=>i.value='');
+  document.querySelectorAll('select').forEach(s=>s.selectedIndex=0);
+  document.querySelectorAll('.story-row:not(:first-child)').forEach(r=>r.remove());
+  const firstStoryNumber = document.querySelector('.story-number');
+  const firstStorySqft = document.querySelector('.story-sqft');
+  if(firstStoryNumber) firstStoryNumber.value='';
+  if(firstStorySqft) firstStorySqft.value='';
+  quill.setContents([{ insert: '\n' }]);
+  document.getElementById('resultsSection').style.display='none';
+  document.getElementById('modalContent').innerHTML='';
+});
+const helpBtn = document.getElementById('helpBtn');
+const helpModal = document.getElementById('helpModal');
+const closeHelp = document.getElementById('closeHelp');
+const closeHelpBtn = document.getElementById('closeHelpBtn');
+
+closeHelp.addEventListener('click', () => {
+  helpModal.style.display = 'none';
+});
+
+helpBtn.addEventListener('click', () => {
+  helpModal.style.display = 'flex';
+  renderCostTable(); // <-- add this line here
+});
+
+
+closeHelp.addEventListener('click', () => {
+  helpModal.style.display = 'none';
+});
+
+closeHelpBtn.addEventListener('click', () => {
+  helpModal.style.display = 'none';
+});
+// Close modal if user clicks outside the content
+helpModal.addEventListener('click', (e) => {
+  if (e.target === helpModal) helpModal.style.display = 'none';
+});
+</script>
+</body>
+</html>
+
+
